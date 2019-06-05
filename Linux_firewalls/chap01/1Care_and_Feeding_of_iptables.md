@@ -121,5 +121,11 @@ The `make menuconfig` command launches the Ncurses interface in which you can se
 
 ### 1.4.1 Essential Netfilter Compilation Options
 
+Some of the more important options to enable within the kernel configuration file include Netfilter connection tracking, logging, and packet filtering. There are two additional configuration sections in the Network Packet Filtering Framework section -- Core Netfilter configuration and IP:Netfilter Configuration.
+
+### 1.4.2 Finishing the kernel Configuration
+
+### 1.4.3 Loadable Kernel Modules vs. Built-in Compilation and Security
+
 
 
