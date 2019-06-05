@@ -97,5 +97,29 @@ Linux内核源码包含了Netfilter的许多子系统，基本的包过滤功能
 
 虽然许多Linux发行版自带了编译好的iptables， 但从Linux内核官网下载的内核设置默认是没有开启的，所以并不是所有的Netfilter子系统都开启了。例如Netfilter connection-tracking功能直到内核的2.6.20.1版才默认开启。
 
+在安装Linux内核前，需要下载并解压。对于2.6.20.1版本，可采用如下命令：
+
+```bash
+# 假定当前用户在/usr/src/目录下，且有相应权限
+$ wget http://www.kernel.org/pub/linux/kernel/v2.6/linux-2.6.20.1.tar.bz2
+$ tar xfj linux-2.6.20.1.tar.bz2
+$ ls -ld linux-2.6.20.1
+```
+
+# 1.4 Kernel Configuration
+
+在进行内核编译前，需要构建kernel configuration file。
+
+```bash
+$ cd /usr/src/linux-2.6.20.1
+$ make menuconfig
+```
+
+The `make menuconfig` command launches the Ncurses interface in which you can select various compile options. The Ncurses interface also easily lends itself to the configuration of a remote Linux kernel across an SSH session without having to forward an X Windows connection.
+
+执行make menuconfig命令后，选择Networking->Networking Options - > Network Packet Filtering Framework
+
+### 1.4.1 Essential Netfilter Compilation Options
+
 
 
