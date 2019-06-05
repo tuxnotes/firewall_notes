@@ -127,5 +127,51 @@ Some of the more important options to enable within the kernel configuration fil
 
 ### 1.4.3 Loadable Kernel Modules vs. Built-in Compilation and Security
 
+本部分涉及的Netfilter大部分的子系统可以通过以下集中方式编译进内核：
+
+- Loadable Kernel Module(LKM): 在运行时，可以动态的加入或者移除内核
+- compiled directly into kernel:直接编译进内核，这意味着不能在运行时进行加载或移除模块
+
+There is a **security trade-off between compiling functionality as an LKM and compiling directly into the kernel**. 一方面以LKM方式加入内核的任何特性的模块都可以通过`rmmod`命令将其从运行中的内核中移除。对于后期发现模块存在安全漏洞的场景，LKM方式更有优势。因为有些情况下漏洞是可以通过加载模块的方式缓解。并且，如果内核源码已经对漏洞进行了不定，则模块可以重新编译和部署甚至于在不停机的情况下完成，漏洞的修复可以实现zero downtime.
+
+另一方面，如果被发现的漏洞代码已经直接编译到内核，漏洞修复的唯一方法是打补丁，重新编译，接着重启系统，但对于任务苛刻的系统(如集团级DNS服务器)，这种直接编译进内核的方式可能就不够灵活了。
+
+以可加载的方式编译内核有潜在危险的可能。如果攻击者能成功的修改系统，就可能通过加载内核的方式植入内核级木马。这可能导致文件系统一致性检查工具崩溃，进程可以被隐藏，网络连接可以躲避`netstat` `lsof` 等工具的检查。Simply compiling the kernel without module support is not a foolproof solution, however, since not all kernel-level rootkits require the host kernel to offer module support. For example, the SucKIT rootkit can load itself into a running kernel by directly manipulating kernel memory through the `/dev/kmem` character device.
+
+## 1.5 Security and Minimal Compilation
+
+不管采用哪种编译Netfilter子系统的策略——LKM方式或直接编译进内核方式——在计算机安全中一个不可推翻的事实就是，系统越复杂，越不安全。越复杂的系统，越难做到安全。幸运的是iptables在运行时阶段和编译功能特性阶段都提供了极高的可配置性。
+
+为了减小内核运行时代码的福再度，不需要的特性不要编译进内核。从内核移除不需要的代码可以最小化未发现漏洞的存在的可能性。比如，如果不需要logging support，simply do not enable the Log Target Support option in the menuconfig interface. 如果不需要跟踪FTP的连接状态，则不要启用FTP Protocol 选项。
+
+## 1.6 Kernel Compilation and Installation
+
+To compile and install the new 2.6.20.1 kernel within the `/boot` partition, execute the following commands:
+
+```bash
+$ make
+$ su -
+Password:
+# mount /boot
+# cd /usr/src/linux-2.6.20.1
+# nake install && make modules_install
+```
+
+Assuming that you are using the **GRUB** bootloader and thatthe mount point for the root partition is `/dev/hda2` , add the following lines to the `/boot/grub/grub.conf` file using your favorite editor:
+
+```bash
+title linux-2.6.20.1
+root (hd0,0)
+kernel /boot/vmlinuz-2.6.20.1 root=/dev/hda2
+```
+
+Now, reboot!
+
+```bash
+# shutdown -r now
+```
+
+## 1.7 Installing the iptables Useland Binaries
+
 
 
