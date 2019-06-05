@@ -43,7 +43,7 @@ Two additional chains that are important for any serious iptables deployment are
 
 Figure 1-1 shows how packets flow through the **nat** and **filter** tables within the kernel.
 
-![packets_flow](/home/tux/Documents/firewall_notes/Linux_firewalls/chap01/packets_flow.png)
+![packets_flow](./packets_flow.png)
 
 ### 1.2.3 Matches
 
