@@ -173,5 +173,111 @@ Now, reboot!
 
 ## 1.7 Installing the iptables Useland Binaries
 
+在启动进入新的内核后，接下来安装新的iptables命令。首先要下载并解压iptables源码，并检查MD5：
 
+```bash
+$ cd /usr/local/src/
+$ wget http://www.netfilter.org/projects/iptables/files/iptables-1.3.7.tar.bz2
+$ md5sum iptables-1.3.7.tar.bz2
+$ tar xfj iptables-1.3.7.tar.bz2
+$ cd iptables-1.3.7
+```
+
+编译iptables需要读取内核源代码，因为编译需要C的头文件，而这些头文件分布在如/linux/netfilter_ipv4中的内核源代码中。这里使用/usr/src/linux-2.6.20.1目录在命令行中定义**KERNEL_DIR** 变量，变量**BINDIR**和**LIBDIR** 定义了iptables二进制文件和库文件的安装路径，命令如下:
+
+```bash
+$ make KERNEL_DIR=/usr/src/linux-2.6.20.1 BINDIR=/sbin LIBDIR=/lib
+$ su -
+Password:
+# cd /usr/local/src/iptables-1.3.7
+# make install KERNEL_DIR=/usr/src/linux-2.6.20.1 BINDIR=/sbin LIBDIR=/lib
+```
+
+验证安装结果:
+
+```bash
+# which iptables
+/sbin/iptables
+# iptables -V
+iptables v1.3.7
+# iptables -nL
+```
+
+## 1.8 Default iptables Policy
+
+有了iptables之后，接下来就是各种管理和配置iptables防火墙
+
+### 1.8.1 Policy Requirements
+
+Assuming our configuration firewall for a network consisting of several client machines and two servers. The servers (a webserver and a DNS server) must be accessible from the external network. Systems on the internal network should be allowed to initiate the following types of traffic through the firewall to external servers:
+
+- Domain Name System(DNS) queties
+- File Transfer Protocol(FTP) transfers
+- Network Time Protocol (NTP) queries
+- Secure Shell (SSH) sessions
+- Simple Mail Transfer Protocol(SMTP) sessions
+- Web session over HTTP/HTTPS
+- whois queries
+
+除了上面列出来的服务，其他的网络包都需要阻挡。Sessions initiated from the internal network or directly from the firewall should be statefully tracked by iptables (with packets that do not conform to a valid state logged and dropped as early as possible), and NAT services should also be provided.
+
+此外，防火墙还应该能控制来自于内部网络需要转发到其他外网IP地址的欺骗数据包:
+
+- The firewall itself must be accessible via SSH from the internal network. but from nowhere else unless it is running fwknop(detail in chapter 13) for authentication . SSH should be the only server process running on the firewall.
+- The firewall should accept ICMP Echo Requests from both the internal and external networks, but unsolicited ICMP packets that are not Echo Requests should be dropped from any source IP address.
+- Lastly, the firewall should be configured with a default *log and drop stance* so that any stray packets, port scans , or other connection attempts that are not explicitly allowed through will logged and dropped.
+
+> NOTE: We will assume that external IP address on the firewall is statically assigned by the ISP, but a dynamically assigned IP address would also work because we restrict packets on the external network by interface name on the firewall instead of by IP address.
+
+为了简化构建iptables策略的任务，假定只有一个没有路由的内网网段192.168.10.0，C类网段，子网为255.255.255.0(or /24 in CIDR notation)
+
+防火墙连接内网的网卡为eth1, ip地址为192.168.10.1 并且内网的所有主机都以这个地址作为其默认网管。**This allows internal systems to route all packets destined for systems that are not within the 192.168.10.0/24 subnet out through the firewall** . 这使得内网系统路由目的地址为非192.168.10.0/24子网的数据包通过防火墙。防火墙的外网网卡是eth0，给配其IP地址为71.157.X.X。如下图：
+
+![network_diagram](./network_diagram.png)
+
+上面的网络图中有两个恶意的(malicious)系统：一个在内网(192.168.10.200, hostname int_scanner);另一个在外网(144.202.X.X , hostname ext_scanner).
+
+### 1.8.2 iptables.sh Script Preamble
+
+开始编写iptables.sh脚本之前，定义三个变量，**IPTABLES**  and **MODPROBE** (for the paths to the iptables and modprobe binaries) and **INT_NET** (for the internal subnet address and mask). 内核中运行的任何存在的iptables规则都要移除，并且filtering policy设置为DROP在INPUT, OUTPUT, FORWARD链中。
+
+```bash
+#!/bin/sh
+
+### define three variables
+IPTABLES=/sbin/iptables
+MODPROBE=/sbin/modprobe
+INT_NET=192.168.10.0/24
+
+### flush existing rules and set chain policy setting to DROP
+echo "[+] Flushing existing iptables rules..."
+### removing existing iptables rules from running kernel
+$IPTABLES -F
+$IPTABLES -F -t nat
+$iptables -X
+$IPTABLES -P INPUT DROP
+$IPTABLES -P OUTPUT DROP
+$IPTABLES -P FORWARD DROP
+### load connection-tracking modules
+$MODPROBE ip_conntrack
+$MODPROBE iptable_nat
+$MODPROBE ip_conntrack_ftp
+$MODPROBE ip_nat_ftp
+```
+
+### 1.8.3 The INPUT Chain
+
+The **INPUT** chain is the iptables construct that governs whether packets that are **destined for the local system (that is , after the result of a routing calculation made by the kernel IP stack designates that the packet is destined for a local IP address) may talk to a local socket** . 如果INPUT链的第一条规则是丢弃所有的包(或INPUT的policy设置为DROP)，则所有直接基于IP与系统的通信(如TCP UDP ICMP)都会失败。
+
+The *Address Resolution Protocol(ARP)* is also important class of traffic that is ubiquitous on Ethernet networks. However, because ARP works at the data link layer instead of the network layer, iptables cannot filter such traffic, since it only filter IP traffic and overlying protocols.
+
+Hence, ARP requests and replies are sent and received regardless of the iptables policy. (ARP协议的数据包过滤使用arptables, 但是这个话题超出了本书的范围，本书基本上关注与网络层以上的数据包)
+
+> NOTE: iptables 可以基于数据链路层的MAC地址过滤IP包，但是只有在Kernel启用了MAC address extention时才可以。2.4版的内核必须手动启动，2.6版的内核默认是启用的。
+
+继续iptables.sh脚本，下面是INPUT链的规则：
+
+```bash
+
+```
 
