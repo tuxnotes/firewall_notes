@@ -72,3 +72,38 @@ $IPTABLES -A OUTPUT -p icmp --icmp-type echo-request -j ACCEPT
 
 ### default OUTPUT LOG rule
 $IPTABLES -A OUTPUT -o ! lo -j LOG --log-prefix "DROP " --log-ip-optins --log-tcp-options
+
+
+###### FORWARD chain ######
+echo "[+] Setting up FORWARD chain..."
+### state tracking rules
+$IPTABLES -A FORWARD -m state INVALID -j LOG --log-prefix "DROP INVALID " --log-ip-options --log-tcp-options
+$IPTABLES -A FORWARD -m state --state INVALID -j DROP
+$IPTABLES -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+### anti-spoofing rules
+$IPTABLES -A FORWARD -i eth1 -s ! $INT_NET -j LOG --log-prefix "SPOOFED PKT "
+$IPTABLES -A FORWARD -i eth1 -s ! $INT_NET -j DROP
+
+### ACCEPT rules 
+$IPTABLES -A FORWARD -p tcp -i eth1 -s $INT_NET --dport 21 --syn -m state --state NEW -j ACCEPT
+$IPTABLES -A FORWARD -p tcp -i eth1 -s $INT_NET --dport 22 --syn -m state --state NEW -j ACCEPT
+$IPTABLES -A FORWARD -p tcp -i eth1 -s $INT_NET --dport 25 --syn -m state --state NEW -j ACCEPT
+$IPTABLES -A FORWARD -p tcp -i eth1 -s $INT_NET --dport 43 --syn -m state --state NEW -j ACCEPT
+$IPTABLES -A FORWARD -p tcp --dport 80 --syn -m state --state NEW -j ACCEPT
+$IPTABLES -A FORWARD -p tcp --dport 443 --syn -m state --state NEW -j ACCEPT
+$IPTABLES -A FORWARD -p tcp -i eth1 -s $INT_NET --dport 4321 --syn -m state --state NEW -j ACCEPT
+$IPTABLES -A FORWARD -p tcp --dport 53 --syn -m state --state NEW -j ACCEPT
+$IPTABLES -A FORWARD -p udp --dport 53 --syn -m state --state NEW -j ACCEPT
+$IPTABLES -A FORWARD -p icmp --icmp-type echo-request -j ACCEPT
+
+### default FORWARD LOG rule
+$IPTABLES -A FORWARD -o ! lo -j LOG --log-prefix "DROP " --log-ip-optins --log-tcp-options
+
+
+###### NAT rules ######
+echo "[+] Setting up NAT rules..."
+$IPTABLES -t nat -A PREROUTING -p tcp --dport 80 -i eth0 -j DNAT --to 192.168.10.3:80
+$IPTABLES -t nat -A PREROUTING -p tcp --dport 443 -i eth0 -j DNAT --to 192.168.10.3:443
+$IPTABLES -t nat -A PREROUTING -p tcp --dport 53 -i eth0 -j DNAT --to 192.168.10.4:53
+$IPTABLES -t nat -A POSTROUTING -s $INT_NET -o eth0 -j MASQUERADE
