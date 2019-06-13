@@ -94,4 +94,28 @@ TYPE=8 CODE=0 ID=44366 SEQ=1
 网络层攻击可以分为以下三类：
 
 - **Header abuses**  Packets that contain maliciously(恶意) constructed , broken, or falsified(篡改) network layer headers, Examples include IP packets with spoofed source addresses and packets that contain unrealistic fragment offset values.
-- **Network stack exploits**  
+- **Network stack exploits**  数据包包含特殊结构的组成部分，用来利用终端主机网络协议栈实现上的漏洞。A good example is the IGMP Denial of Service(Dos) vulnerability discovered in the Linux kernel(version 2.6.9 and earlier)
+- **Bandwidth saturation  ** 数据包在目标网络上占据了所有带宽。A Distributed Denial of Service(DDoS) attack sent over ICMP is a good example
+
+## 2.3 Abusing the Network Layer
+
+网络层的功能是将数据包路由到目的地址。因为IPv4没有任何的授权概念(授权留给了IPSec协议或更高层的机制)， 所以攻击者很容易通过操纵头部或数据来构造IP包。但这样的数据包有可能被在线过滤设备如防火墙或带ACL的路由器过滤，在数据包到达目标之前。
+
+### 2.3.1 Nmap ICMP Ping
+
+**Host discovery is performed by sending an ICMP Echo Request and a TCP ACK to port 80 on the targeted hosts. (Host discovery can be disabled with the Nmap -P0 command-line argument but it is enabled by default)**
+
+Nmap产生的ICMP Echo Requests数据包与ping命令产生的不同，因为它的ICMP头部不包含任何数据。因此这样的数据包的IP length filed应是28字节：20 bytes for the IP header without options, plus 8 bytes for the ICMP header , plus 0 bytes for data.
+
+```bash
+[ext_scanner]# nmap -sP 71.157.X.X
+[iptablesfw]# tail /var/log/messages | grep ICMP
+Jul 24 22:29:59 iptablesfw kernel: IN=eth0 OUT=
+MAC=00:13:d3:38:b6:e4:00:30:48:80:4e:37:08:00 SRC=144.202.X.X DST=71.157.X.X
+LEN=28 TOS=0x00 PREC=0x00 TTL=48 ID=1739 PROTO=ICMP TYPE=8 CODE=0 ID=15854
+SEQ=62292
+```
+
+> NOTE:ping 命令也是可以产生没有应用层数据的数据包的，通过在命令行参数中使用      `-s 0` 来设置一个0长度的payload data。默认情况下ping命令会包含几十字节的payload data.
+
+没有应用层数据并不一定是abuse of network layer。如果你发现这样的数据包结合其他的数据包显示了有端口扫描的活动，这说明有人在使用Nmap对你的网络进行探测。
