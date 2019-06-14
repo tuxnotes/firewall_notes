@@ -119,3 +119,23 @@ SEQ=62292
 > NOTE:ping 命令也是可以产生没有应用层数据的数据包的，通过在命令行参数中使用      `-s 0` 来设置一个0长度的payload data。默认情况下ping命令会包含几十字节的payload data.
 
 没有应用层数据并不一定是abuse of network layer。如果你发现这样的数据包结合其他的数据包显示了有端口扫描的活动，这说明有人在使用Nmap对你的网络进行探测。
+
+### 2.3.2 IP Spoofing
+
+计算机安全领域有几个属于非常容易让人混淆。spoof是愚弄，恶作剧。而IP spoofing是故意构造虚假源地址的IP包。
+
+> NOTE:我们需要排除一个例外，就是NAT对IP包原地址的更改操作。这种不能与IP spoofing混淆， NAT是合法的网络功能，而隐藏虚假的源地址的攻击就不是了。
+
+说道基于IP协议的通信时，其内置地址进行限制的功能。通过使用原生的socket(比较底层的编程API) , IP 包可以用任意的源地址进行发送。如果源地址在当前局域网环境中是没有意义的(比如数据包的源地址IP属于Verizon's 网络，而数据要实际上是要从Comcast's网络发出)，那么则认为此数据包是spoofied。管理员可以采取措施设置路由和防火墙来拒绝转发源地址不属于内网范围内的数据包(这样spoofed数据包永远不会出去),但很多网络并没有限制这样的行为。
+
+从安全的角度将，关于spoofed packets最重要的事情是不要相信源地址。实际上，一次成功的攻击可以是单个spoofed packet转发造成的。(detail in chapter 08)
+
+> NOTE: 需要注意的是，任何从目标地址返回的数据包都会被返回给虚假IP源地址。令人欣慰的是，任何基于需要双向数据交互的协议，如传输层的TCP协议，都不会对虚假IP源地址敏感。
+
+许多安全软件(both offensive and defensive)都有制造虚假源IP地址的功能。DDoS工具将制造虚假IP源地址作为最基本的工具，比较著名的工具如`hping`和`Nmap`都能够制造虚假IP源地址。
+
+### 2.3.3 IP Fragmentation
+
+将IP数据包分割成一系列较小的数据包是IP协议的基本特性。**The process of splitting IP packets, known as *fragmentation*, is necessary when an IP packet is routed to a network where the data link MTU size  is too small to accommodate the packet**. It is responsibility of any router that connects two data link layers with different MTU sizes to ensure that IP packets transmitted from one data link layer to another never execcd the MTU. 连接两个不同MTU的数据链路层的路由器负责传输的数据包不超过任何MTU值。**The IP stack of the destination host reassembles the IP fragments in order to create the original packet, at which point an encapsulated protocol with in the packets is handed up the stack to the next layer**.
+
+IP fragmentation 可以被攻击者用做IDS(Intrusion Detection Systems入侵检测系统)躲避机制。将用于攻击的数据包可以分割成多个IP fragments. 最终接受的IP stack实现者会完全组装fragments。但是为了检测攻击，IDS也会采用最终组装fragments的IP stack相同的算法来组装数据包。因为IP stack实现组装的算法有些不同(如，for duplicate fragments, Cisco IOS IP stacks reassemble traffic according to a last fragment policy, where as Windows XP stacks reassemble according to a first fragment policy),这对IDS来说是个挑战。The gold standard for generating fragmented traffic is Dug Song’s fragroute tool (see http://www.monkey.org)
