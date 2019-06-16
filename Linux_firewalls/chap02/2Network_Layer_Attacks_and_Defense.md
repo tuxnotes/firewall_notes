@@ -139,3 +139,18 @@ SEQ=62292
 将IP数据包分割成一系列较小的数据包是IP协议的基本特性。**The process of splitting IP packets, known as *fragmentation*, is necessary when an IP packet is routed to a network where the data link MTU size  is too small to accommodate the packet**. It is responsibility of any router that connects two data link layers with different MTU sizes to ensure that IP packets transmitted from one data link layer to another never execcd the MTU. 连接两个不同MTU的数据链路层的路由器负责传输的数据包不超过任何MTU值。**The IP stack of the destination host reassembles the IP fragments in order to create the original packet, at which point an encapsulated protocol with in the packets is handed up the stack to the next layer**.
 
 IP fragmentation 可以被攻击者用做IDS(Intrusion Detection Systems入侵检测系统)躲避机制。将用于攻击的数据包可以分割成多个IP fragments. 最终接受的IP stack实现者会完全组装fragments。但是为了检测攻击，IDS也会采用最终组装fragments的IP stack相同的算法来组装数据包。因为IP stack实现组装的算法有些不同(如，for duplicate fragments, Cisco IOS IP stacks reassemble traffic according to a last fragment policy, where as Windows XP stacks reassemble according to a first fragment policy),这对IDS来说是个挑战。The gold standard for generating fragmented traffic is Dug Song’s fragroute tool (see http://www.monkey.org)
+
+### 2.3.4 Low TTL Values
+
+IP数据包中IP头部的TTL值每经过一次IP路由器，转发到下一个系统都会减1. 如果你的本地子网中出现了TTL为1 的数据包，那可能是有人在使用traceroute程序(或者类似tcptraceroute工具)追踪一个IP地址，此IP地址可能是存在于本地子网，也可能是被路由经过本地子网。通常有人也会使用此方法排查网络连通性问题，但也可能是有人在对你的网络进行探测，以发现潜在可路由到的目标地址。
+
+> NOTE: Packets destined for multicast addresses(all addresses with the range 224.0.0.0 through 239.255.255.255, as defined by RFC 1112)commonly have TTL values set to one. So if the destination address is a multicast address, it is likely that such traffic is not associated with network mapping efforts with traceroute and is just legitimate multicast traffic.
+
+traceroute 产生的UDP数据包在iptables中会产生如下日志：
+
+```bash
+Jul 24 01:10:55 iptablesfw kernel: DROP IN=eth0 OUT=
+MAC=00:13:d3:38:b6:e4:00:13:46:c2:60:44:08:00 SRC=144.202.X.X DST=71.157.X.X
+LEN=40 TOS=0x00 PREC=0x00 TTL=1 ID=44081 PROTO=UDP SPT=54522 DPT=33438 LEN=20
+```
+
