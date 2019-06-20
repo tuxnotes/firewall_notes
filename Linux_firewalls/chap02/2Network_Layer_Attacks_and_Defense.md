@@ -154,3 +154,13 @@ MAC=00:13:d3:38:b6:e4:00:13:46:c2:60:44:08:00 SRC=144.202.X.X DST=71.157.X.X
 LEN=40 TOS=0x00 PREC=0x00 TTL=1 ID=44081 PROTO=UDP SPT=54522 DPT=33438 LEN=20
 ```
 
+### 2.3.5 The Smurf Attack
+
+The smurf attack is an old but elegant technique whereby an attacker spoofs ICMP Echo Requests to a network broadcast address. 
+
+The smurf attack is outdated when compared to tools that perform DDos attacks with dedicated control channels and for wich there is no easy router configuration countermeasure . Still , ti is worth mentioning , because the Smurf attack is so easy to perform and the original source code is readily available.
+
+see http://www.phreak.org/archives/exploits/denial/smurf.c
+
+### 2.3.6 DDoS Attacks
+
