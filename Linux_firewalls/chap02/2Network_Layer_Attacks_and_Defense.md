@@ -164,3 +164,26 @@ see http://www.phreak.org/archives/exploits/denial/smurf.c
 
 ### 2.3.6 DDoS Attacks
 
+网络层的DDoS攻击是利用很多系统同时对目标IP发送数据包，目的是为了耗尽带宽，以至于合法的连接受阻。
+
+DDoS attacks are among the more difficult network layer attacks to combat because so many systems are connected via broadband to the Internet.
+
+Because the individual packets created by a DDoS agent can be spoofed, it is generally futile to assign any value to the source IP address  of such packets by the time the packet reaches the victim.
+
+In general, it is more effective to try to detect the control communications associated woth DDoS agents than to detect the flood packets themselves.
+
+### 2.3.7 Linux Kernel IGMP Attack
+
+Kernel versions from 2.4.22–2.4.28, and 2.6–2.6.9 are vulnerable and can be exploited both remotely and by local users. A successful exploit
+over the network from a remote system could result in a kernel crash, as discussed in more detail at http://isec.pl/vulnerabilities/isec-0018-igmp.txt.
+
+Kernel code sometimes contains security bugs, and these bugs can exist all the way down at the network layer processing code or within device drivers.
+
+## 2.4 Network Layer Responses
+
+We are limited to the manipulation of network layer headers in one of three ways:
+
+- A filtering operation conducted by a device such as a firewall or router to block the source IP address of an attacker
+- Reconfiguration of a routing protocol to deny the ability of an attacker to route packets to an intended target by means of *route blackholing* -- packets are sent into the void and are never heard from again
+- Applying thresholding logic to the amount of traffic that is allowed to pass through a firewall or router based on utilized bandwidth
+
